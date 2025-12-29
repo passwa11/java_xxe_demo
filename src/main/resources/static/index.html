@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XXE漏洞测试工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            border: none;
+            background-color: #e0e0e0;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .tab-button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 0 0 5px 5px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        input[type="text"], select {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        #file-upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        #file-upload-area:hover {
+            border-color: #4CAF50;
+        }
+        #upload-progress, #generate-progress {
+            width: 100%;
+            height: 20px;
+            background-color: #f1f1f1;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+        #upload-progress-bar, #generate-progress-bar {
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 10px;
+            width: 0%;
+        }
+        .tool-tip {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        .radio-group {
+            display: flex;
+            gap: 15px;
+        }
+        .radio-group label {
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .radio-group input[type="radio"] {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>XXE漏洞测试工具</h1>
+        
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab(event, 'file-upload')">文件上传</button>
+            <button class="tab-button" onclick="openTab(event, 'generate-poc')">POC生成</button>
+        </div>
+        
+        <!-- 文件上传标签页 -->
+        <div id="file-upload" class="tab-content active">
+            <h2>文档内容读取</h2>
+            <p>支持Word (.docx)和Excel (.xlsx)文件格式</p>
+            
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="file">Word或Excel文件:</label>
+                    <div id="file-upload-area">
+                        <input type="file" id="file" name="file" accept=".xlsx,.docx">
+                        <p>点击或拖拽文件到此处上传</p>
+                    </div>
+                </div>
+                
+                <button type="submit">上传并读取文档内容</button>
+                <div id="upload-progress">
+                    <div id="upload-progress-bar"></div>
+                </div>
+            </form>
+            <div class="result" id="result"></div>
+        </div>
+
+        <!-- POC生成标签页 -->
+        <div id="generate-poc" class="tab-content">
+            <h2>生成XXE漏洞测试文档</h2>
+            <p>生成包含XXE漏洞的Word或Excel文档</p>
+            
+            <form id="generate-form">
+                <div class="form-group">
+                    <label for="dnslog-domain">DNSLog域名:</label>
+                    <input type="text" id="dnslog-domain" name="http://dnslog.com" placeholder="例如: your-dnslog.example.com" required>
+                    <div class="tool-tip">请输入您的DNSLog域名，用于检测XXE漏洞触发情况</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>文档类型:</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="documentType" value="word" checked> Word (.docx)</label>
+                        <label><input type="radio" name="documentType" value="excel"> Excel (.xlsx)</label>
+                    </div>
+                </div>
+                
+                <button type="submit">生成并下载测试文档</button>
+                <div id="generate-progress">
+                    <div id="generate-progress-bar"></div>
+                </div>
+            </form>
+            <div class="result" id="generate-result"></div>
+        </div>
+    </div>
+
+    <script>
+        // 标签切换函数
+        function openTab(evt, tabName) {
+            var i, tabContent, tabButtons;
+            tabContent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabContent.length; i++) {
+                tabContent[i].classList.remove("active");
+            }
+            tabButtons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        // 文件上传表单提交处理
+        document.getElementById("upload-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+            
+            var fileInput = document.getElementById("file");
+            var resultDiv = document.getElementById("result");
+            var progressDiv = document.getElementById("upload-progress");
+            var progressBar = document.getElementById("upload-progress-bar");
+            
+            // 检查文件是否选择
+            if (!fileInput.files || fileInput.files.length === 0) {
+                resultDiv.innerHTML = "<span class='error'>请选择一个文件上传。</span>";
+                return;
+            }
+            
+            var file = fileInput.files[0];
+            var formData = new FormData();
+            formData.append("file", file);
+            
+            // 显示上传进度条
+            progressDiv.style.display = "block";
+            progressBar.style.width = "0%";
+            resultDiv.innerHTML = "正在上传并处理文件...";
+            
+            // 使用Fetch API上传文件
+            fetch("/upload", {
+                method: "POST",
+                body: formData
+            }).then(function(response) {
+                // 显示100%进度
+                progressBar.style.width = "100%";
+                
+                // 检查响应是否成功
+                if (!response.ok) {
+                    throw new Error("网络响应错误: " + response.status);
+                }
+                return response.text(); // 使用text()代替json()
+            }).then(function(data) {
+                // 显示结果
+                if (data.includes("读取Word文档内容") || data.includes("读取Excel文档内容")) {
+                    resultDiv.innerHTML = "<span class='success'>" + data + "</span>";
+                } else {
+                    resultDiv.innerHTML = "<span class='error'>" + data + "</span>";
+                }
+            }).catch(function(error) {
+                // 处理错误
+                resultDiv.innerHTML = "<span class='error'>请求失败: " + error.message + "</span>";
+            }).finally(function() {
+                // 隐藏进度条（可选）
+                setTimeout(function() {
+                    progressDiv.style.display = "none";
+                }, 1000);
+            });
+        });
+
+        // POC生成表单提交处理
+        document.getElementById("generate-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+            
+            var dnslogInput = document.getElementById("dnslog-domain");
+            var documentType = document.querySelector('input[name="documentType"]:checked').value;
+            var resultDiv = document.getElementById("generate-result");
+            var progressDiv = document.getElementById("generate-progress");
+            var progressBar = document.getElementById("generate-progress-bar");
+            
+            // 验证DNSLog输入
+            if (!dnslogInput.value.trim()) {
+                resultDiv.innerHTML = "<span class='error'>请输入有效的DNSLog域名。</span>";
+                return;
+            }
+            
+            // 显示生成进度条
+            progressDiv.style.display = "block";
+            progressBar.style.width = "0%";
+            resultDiv.innerHTML = "正在生成测试文档...";
+            
+            // 构建表单数据
+            var formData = new FormData();
+            formData.append("dnslogDomain", dnslogInput.value.trim());
+            // 将documentType转换为fileType以匹配后端API
+            var fileType = documentType === "word" ? "docx" : "xlsx";
+            formData.append("fileType", fileType);
+            
+            // 使用Fetch API提交请求
+            fetch("/generate-poc", {
+                method: "POST",
+                body: formData
+            }).then(function(response) {
+                // 显示100%进度
+                progressBar.style.width = "100%";
+                
+                // 检查响应是否成功
+                if (!response.ok) {
+                    // 尝试获取错误消息
+                    return response.blob().then(blob => {
+                        // 尝试将blob转换为文本
+                        return new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve({ ok: false, text: reader.result });
+                            reader.onerror = () => reject(new Error("网络响应错误: " + response.status));
+                            reader.readAsText(blob);
+                        });
+                    });
+                }
+                
+                return { ok: true, response: response };
+            }).then(function(result) {
+                if (!result.ok) {
+                    throw new Error(result.text || "生成文档失败");
+                }
+                
+                // 获取文件名
+                var filename = documentType === "word" ? "xxe_test.docx" : "xxe_test.xlsx";
+                
+                // 创建下载链接
+                return result.response.blob().then(function(blob) {
+                    var url = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // 清理
+                    setTimeout(function() {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    }, 0);
+                    
+                    resultDiv.innerHTML = "<span class='success'>测试文档已成功生成并下载！</span>";
+                });
+            }).catch(function(error) {
+                // 处理错误
+                resultDiv.innerHTML = "<span class='error'>请求失败: " + error.message + "</span>";
+            }).finally(function() {
+                // 隐藏进度条（可选）
+                setTimeout(function() {
+                    progressDiv.style.display = "none";
+                }, 1000);
+            });
+        });
+
+        // 拖拽上传支持
+        var dropArea = document.getElementById("file-upload-area");
+        var fileInput = document.getElementById("file");
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.style.borderColor = "#4CAF50";
+            dropArea.style.backgroundColor = "#f0f8f0";
+        }
+        
+        function unhighlight() {
+            dropArea.style.borderColor = "#ccc";
+            dropArea.style.backgroundColor = "transparent";
+        }
+        
+        dropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            var dt = e.dataTransfer;
+            var files = dt.files;
+            
+            if (files.length) {
+                fileInput.files = files;
+                // 可选：触发表单提交
+            }
+        }
+    </script>
+</body>
+</html>
