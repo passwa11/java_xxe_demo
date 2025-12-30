@@ -76,7 +76,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.xxe.demo.XxeDemoApp</mainClass>
+                            <mainClass>com.xxe.demo.XxeWebApplication</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
