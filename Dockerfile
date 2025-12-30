@@ -5,7 +5,7 @@ FROM amazoncorretto:8-alpine
 WORKDIR /app
 
 # 复制本地构建好的jar文件到容器中
-COPY target/java-xxe-demo-1.0-SNAPSHOT.jar app.jar
+COPY target/java-xxe-demo-1.0-SNAPSHOT-jar-with-dependencies.jar app.jar
 
 # 暴露应用端口
 EXPOSE 8888
